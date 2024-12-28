@@ -12,16 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import platform
-import sys
+from platformio.compat import is_proxy_set
 
-PY36 = sys.version_info[0:2] == (3, 6)
+
+def get_core_dependencies():
+    return {
+        "contrib-piohome": "~3.4.2",
+        "contrib-pioremote": "~1.0.0",
+        "tool-scons": "~4.40801.0",
+        "tool-cppcheck": "~1.21100.0",
+        "tool-clangtidy": "~1.150005.0",
+        "tool-pvs-studio": "~7.18.0",
+    }
 
 
 def get_pip_dependencies():
     core = [
-        "bottle == 0.12.*",
+        'bottle == 0.12.*; python_version < "3.7"',
+        'bottle == 0.13.*; python_version >= "3.7"',
         "click >=8.0.4, <9",
         "colorama",
         "marshmallow == 3.*",
@@ -35,16 +43,17 @@ def get_pip_dependencies():
     home = [
         # PIO Home requirements
         "ajsonrpc == 1.2.*",
-        "starlette >=0.19, <0.38",
-        "uvicorn %s" % ("== 0.16.0" if PY36 else ">=0.16, <0.28"),
+        "starlette >=0.19, <0.43",
+        'uvicorn == 0.16.0; python_version < "3.7"',
+        'uvicorn >=0.16, <0.35; python_version >= "3.7"',
         "wsproto == 1.*",
     ]
 
     extra = []
-
     # issue #4702; Broken "requests/charset_normalizer" on macOS ARM
-    if platform.system() == "Darwin" and "arm" in platform.machine().lower():
-        extra.append("chardet>=3.0.2,<6")
+    extra.append(
+        'chardet >= 3.0.2,<6; platform_system == "Darwin" and "arm" in platform_machine'
+    )
 
     # issue 4614: urllib3 v2.0 only supports OpenSSL 1.1.1+
     try:
@@ -60,12 +69,3 @@ def get_pip_dependencies():
         pass
 
     return core + home + extra
-
-
-def is_proxy_set(socks=False):
-    for var in ("HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY"):
-        value = os.getenv(var, os.getenv(var.lower()))
-        if not value or (socks and not value.startswith("socks5://")):
-            continue
-        return True
-    return False
